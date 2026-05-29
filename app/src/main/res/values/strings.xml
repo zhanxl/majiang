@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">麻将分析</string>
+    <string name="camera_permission_required">需要摄像头权限</string>
+    <string name="grant_permission">授予权限</string>
+    <string name="start_game">开始游戏</string>
+    <string name="record_discard">记录出牌</string>
+    <string name="get_recommendation">获取推荐</string>
+    <string name="game_history">游戏历史</string>
+    <string name="statistics">统计数据</string>
+    <string name="settings">设置</string>
+</resources>
