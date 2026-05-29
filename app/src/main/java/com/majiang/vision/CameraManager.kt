@@ -115,29 +115,6 @@ class CameraManager(
         }
     }
 
-    fun capturePhotoToBitmap(onResult: (Bitmap?) -> Unit) {
-        val capture = imageCapture ?: run {
-            onResult(null)
-            return
-        }
-
-        capture.takePicture(
-            cameraExecutor,
-            object : ImageCapture.OnImageCapturedCallback() {
-                override fun onCaptureSuccess(image: ImageProxy) {
-                    val bitmap = image.toBitmap()
-                    image.close()
-                    onResult(bitmap)
-                }
-
-                override fun onError(exception: ImageCaptureException) {
-                    Timber.e(exception, "Photo capture failed")
-                    onResult(null)
-                }
-            }
-        )
-    }
-
     private fun processImageProxy(imageProxy: ImageProxy) {
         val bitmap = imageProxy.toBitmap()
         analysisCallback?.invoke(bitmap)

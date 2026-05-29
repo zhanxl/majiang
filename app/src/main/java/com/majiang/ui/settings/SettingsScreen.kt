@@ -1,6 +1,6 @@
 package com.majiang.ui.settings
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +13,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -23,16 +22,11 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.majiang.vision.strategy.CloudVisionProvider
 import com.majiang.viewmodel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,7 +49,9 @@ fun SettingsScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "游戏规则",
@@ -94,77 +90,14 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "云端视觉识别",
+                        text = "识别设置",
                         style = MaterialTheme.typography.titleMedium
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "使用大模型视觉能力拍照识别麻将牌",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "识别服务",
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                    Column(modifier = Modifier.selectableGroup()) {
-                        val providers = listOf(
-                            CloudVisionProvider.QWEN to "通义千问（推荐）",
-                            CloudVisionProvider.OPENAI to "GPT-4o",
-                            CloudVisionProvider.CUSTOM to "自定义接口"
-                        )
-                        providers.forEach { (provider, label) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .selectable(
-                                        selected = uiState.cloudProvider == provider,
-                                        onClick = { viewModel.setCloudProvider(provider) },
-                                        role = Role.RadioButton
-                                    )
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
-                                    selected = uiState.cloudProvider == provider,
-                                    onClick = null
-                                )
-                                Text(
-                                    text = label,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = uiState.cloudApiKey,
-                        onValueChange = { viewModel.setCloudApiKey(it) },
-                        label = { Text("API Key") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    if (uiState.cloudProvider == CloudVisionProvider.CUSTOM) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = uiState.customEndpoint,
-                            onValueChange = { viewModel.setCustomEndpoint(it) },
-                            label = { Text("自定义接口地址") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                    }
-
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
@@ -183,7 +116,9 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "分析设置",
@@ -207,13 +142,15 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = "深色模式",
