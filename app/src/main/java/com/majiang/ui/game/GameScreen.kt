@@ -102,6 +102,15 @@ private fun GameSetupContent(
         ) {
             Text("开始游戏（四川麻将）")
         }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedButton(
+            onClick = { onStartGame(listOf("玩家1", "玩家2", "玩家3", "玩家4"), "长沙红中麻将") },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("开始游戏（长沙红中麻将）")
+        }
     }
 }
 

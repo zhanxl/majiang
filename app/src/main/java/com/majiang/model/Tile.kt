@@ -64,6 +64,9 @@ enum class Tile(
     val isTerminalOrHonor: Boolean
         get() = isTerminal || isHonorTile
 
+    val isWildcard: Boolean
+        get() = this == JIAN_ZHONG
+
     fun nextInSuit(): Tile? {
         if (!isNumberTile || number >= 9) return null
         return entries.firstOrNull {
@@ -86,5 +89,11 @@ enum class Tile(
         fun jianTiles(): List<Tile> = entries.filter { it.category == TileCategory.JIAN }
         fun numberTiles(): List<Tile> = entries.filter { it.isNumberTile }
         fun honorTiles(): List<Tile> = entries.filter { it.isHonorTile }
+        fun hongzhongSet(): List<Tile> = entries.filter {
+            it.category == TileCategory.WAN ||
+            it.category == TileCategory.TIAO ||
+            it.category == TileCategory.TONG ||
+            it == JIAN_ZHONG
+        }
     }
 }

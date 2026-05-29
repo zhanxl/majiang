@@ -12,7 +12,9 @@ import com.majiang.model.GameRecord
 import com.majiang.model.GameState
 import com.majiang.model.Player
 import com.majiang.model.Tile
+import com.majiang.model.TileSet
 import com.majiang.model.Wind
+import com.majiang.model.rule.ChangshaHongzhongRule
 import com.majiang.model.rule.GuangdongRule
 import com.majiang.model.rule.MahjongRule
 import com.majiang.model.rule.SichuanRule
@@ -31,7 +33,10 @@ data class GameUiState(
     val waitingTiles: List<Tile> = emptyList(),
     val selectedTile: Tile? = null,
     val isGameStarted: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isWildcardMode: Boolean = false,
+    val isShaGui: Boolean = false,
+    val hongzhongCount: Int = 0
 )
 
 @HiltViewModel
@@ -50,15 +55,58 @@ class GameViewModel @Inject constructor(
     fun startGame(playerNames: List<String>, ruleName: String = "广东麻将") {
         currentRule = when (ruleName) {
             "四川麻将" -> SichuanRule()
+            "长沙红中麻将" -> ChangshaHongzhongRule()
             else -> GuangdongRule()
         }
 
-        val gameState = GameState.createNewGame(playerNames, currentRule)
+        val isWildcardMode = currentRule is ChangshaHongzhongRule
+
+        val gameState = if (isWildcardMode) {
+            createHongzhongGame(playerNames)
+        } else {
+            GameState.createNewGame(playerNames, currentRule)
+        }
+
         _uiState.value = GameUiState(
             gameState = gameState,
-            isGameStarted = true
+            isGameStarted = true,
+            isWildcardMode = isWildcardMode
         )
         updateAnalysis()
+    }
+
+    private fun createHongzhongGame(playerNames: List<String>): GameState {
+        val hongzhongTiles = Tile.hongzhongSet()
+        val fullSet = mutableListOf<Tile>()
+        hongzhongTiles.forEach { tile ->
+            repeat(4) { fullSet.add(tile) }
+        }
+        val shuffled = fullSet.shuffled()
+
+        val winds = Wind.entries
+        var wall = shuffled
+        val players = playerNames.mapIndexed { index, name ->
+            val (hand, remaining) = wall.let { tiles ->
+                val dealt = tiles.take(13)
+                dealt to tiles.drop(13)
+            }
+            wall = remaining
+            Player(
+                name = name,
+                wind = winds[index % winds.size],
+                isDealer = index == 0,
+                hand = hand.sortedBy { it.ordinal }
+            )
+        }
+
+        return GameState(
+            players = players,
+            wall = TileSet(wall),
+            currentPlayerIndex = 0,
+            phase = GamePhase.DRAW,
+            dealerIndex = 0,
+            roundWind = Wind.EAST
+        )
     }
 
     fun drawTile() {
@@ -113,6 +161,7 @@ class GameViewModel @Inject constructor(
     fun setRule(ruleName: String) {
         currentRule = when (ruleName) {
             "四川麻将" -> SichuanRule()
+            "长沙红中麻将" -> ChangshaHongzhongRule()
             else -> GuangdongRule()
         }
     }
@@ -153,7 +202,18 @@ class GameViewModel @Inject constructor(
         val currentPlayer = state.gameState.currentPlayer
         val visibleTiles = state.gameState.allVisibleTiles()
 
-        val readyResult = readyAnalyzer.analyzeReady(currentPlayer.hand, visibleTiles)
+        val hongzhongCount = if (state.isWildcardMode) {
+            currentPlayer.hand.count { it.isWildcard }
+        } else 0
+
+        val isShaGui = state.isWildcardMode && !currentPlayer.hand.contains(Tile.JIAN_ZHONG)
+
+        val readyResult = if (state.isWildcardMode) {
+            readyAnalyzer.analyzeReadyWithWildcard(currentPlayer.hand, visibleTiles)
+        } else {
+            readyAnalyzer.analyzeReady(currentPlayer.hand, visibleTiles)
+        }
+
         val recommendations = recommendationEngine.getRecommendations(
             hand = currentPlayer.hand,
             visibleTiles = visibleTiles,
@@ -166,7 +226,9 @@ class GameViewModel @Inject constructor(
         _uiState.value = state.copy(
             recommendations = recommendations,
             isReady = readyResult.isReady,
-            waitingTiles = readyResult.waitingTiles.map { it.tile }
+            waitingTiles = readyResult.waitingTiles.map { it.tile },
+            hongzhongCount = hongzhongCount,
+            isShaGui = isShaGui
         )
     }
 }
