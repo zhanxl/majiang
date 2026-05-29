@@ -154,6 +154,33 @@ private fun GamePlayContent(
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        if (uiState.isWildcardMode) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        "🀄 红中×${uiState.hongzhongCount}",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    if (uiState.isShaGui) {
+                        Text(
+                            "🔥 杀鬼（番数加倍）",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+
         if (uiState.isReady) {
             Card(
                 colors = CardDefaults.cardColors(

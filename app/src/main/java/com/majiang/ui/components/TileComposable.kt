@@ -29,34 +29,40 @@ fun TileComposable(
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = when (tile.category) {
-        TileCategory.WAN -> Color(0xFFFFEBEE)
-        TileCategory.TIAO -> Color(0xFFE8F5E9)
-        TileCategory.TONG -> Color(0xFFE3F2FD)
-        TileCategory.FENG -> Color(0xFFFFF3E0)
-        TileCategory.JIAN -> Color(0xFFF3E5F5)
+    val backgroundColor = when {
+        tile.isWildcard -> Color(0xFFFFEBEE)
+        tile.category == TileCategory.WAN -> Color(0xFFFFEBEE)
+        tile.category == TileCategory.TIAO -> Color(0xFFE8F5E9)
+        tile.category == TileCategory.TONG -> Color(0xFFE3F2FD)
+        tile.category == TileCategory.FENG -> Color(0xFFFFF3E0)
+        tile.category == TileCategory.JIAN -> Color(0xFFF3E5F5)
+        else -> Color(0xFFFFEBEE)
     }
 
-    val textColor = when (tile.category) {
-        TileCategory.WAN -> Color(0xFFC62828)
-        TileCategory.TIAO -> Color(0xFF2E7D32)
-        TileCategory.TONG -> Color(0xFF1565C0)
-        TileCategory.FENG -> Color(0xFFE65100)
-        TileCategory.JIAN -> when (tile) {
+    val textColor = when {
+        tile.isWildcard -> Color(0xFFC62828)
+        tile.category == TileCategory.WAN -> Color(0xFFC62828)
+        tile.category == TileCategory.TIAO -> Color(0xFF2E7D32)
+        tile.category == TileCategory.TONG -> Color(0xFF1565C0)
+        tile.category == TileCategory.FENG -> Color(0xFFE65100)
+        tile.category == TileCategory.JIAN -> when (tile) {
             Tile.JIAN_ZHONG -> Color(0xFFC62828)
             Tile.JIAN_FA -> Color(0xFF2E7D32)
             Tile.JIAN_BAI -> Color(0xFF424242)
             else -> Color(0xFF6A1B9A)
         }
+        else -> Color(0xFFC62828)
     }
 
     val borderColor = when {
+        tile.isWildcard && !isSelected && !isRecommended -> Color(0xFFFFCDD2)
         isSelected -> MaterialTheme.colorScheme.primary
         isRecommended -> Color(0xFF4CAF50)
         else -> Color(0xFFBDBDBD)
     }
 
     val borderWidth = when {
+        tile.isWildcard && !isSelected && !isRecommended -> 2.dp
         isSelected -> 2.dp
         isRecommended -> 2.dp
         else -> 1.dp

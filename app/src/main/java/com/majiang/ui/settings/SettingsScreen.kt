@@ -60,7 +60,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Column(modifier = Modifier.selectableGroup()) {
-                        val rules = listOf("广东麻将", "四川麻将")
+                        val rules = listOf("广东麻将", "四川麻将", "长沙红中麻将")
                         rules.forEach { rule ->
                             Row(
                                 modifier = Modifier
