@@ -107,8 +107,22 @@ fun SettingsScreen(
                     Slider(
                         value = uiState.confidenceThreshold,
                         onValueChange = { viewModel.setConfidenceThreshold(it) },
-                        valueRange = 0.3f..1.0f,
-                        steps = 7,
+                        valueRange = 0.1f..1.0f,
+                        steps = 9,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "NMS IoU阈值: ${(uiState.iouThreshold * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Slider(
+                        value = uiState.iouThreshold,
+                        onValueChange = { viewModel.setIouThreshold(it) },
+                        valueRange = 0.1f..0.9f,
+                        steps = 8,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

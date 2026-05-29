@@ -1,7 +1,6 @@
 package com.majiang.vision
 
 import com.majiang.model.Tile
-import com.majiang.model.TileCategory
 
 data class RecognitionResult(
     val tile: Tile?,
@@ -14,7 +13,7 @@ data class RecognitionResult(
         get() = confidence >= CONFIDENCE_THRESHOLD
 
     companion object {
-        const val CONFIDENCE_THRESHOLD = 0.7f
+        const val CONFIDENCE_THRESHOLD = 0.5f
 
         fun unknown(label: String, confidence: Float): RecognitionResult =
             RecognitionResult(
@@ -24,16 +23,4 @@ data class RecognitionResult(
                 label = label
             )
     }
-}
-
-data class BoundingBox(
-    val left: Float,
-    val top: Float,
-    val right: Float,
-    val bottom: Float
-) {
-    val width: Float get() = right - left
-    val height: Float get() = bottom - top
-    val centerX: Float get() = (left + right) / 2
-    val centerY: Float get() = (top + bottom) / 2
 }

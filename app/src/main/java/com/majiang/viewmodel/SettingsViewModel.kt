@@ -9,7 +9,8 @@ import javax.inject.Inject
 
 data class SettingsUiState(
     val selectedRule: String = "广东麻将",
-    val confidenceThreshold: Float = 0.7f,
+    val confidenceThreshold: Float = 0.5f,
+    val iouThreshold: Float = 0.45f,
     val simulationCount: Int = 1000,
     val isDarkTheme: Boolean = false
 )
@@ -26,6 +27,10 @@ class SettingsViewModel @Inject constructor() : ViewModel() {
 
     fun setConfidenceThreshold(threshold: Float) {
         _uiState.value = _uiState.value.copy(confidenceThreshold = threshold)
+    }
+
+    fun setIouThreshold(threshold: Float) {
+        _uiState.value = _uiState.value.copy(iouThreshold = threshold)
     }
 
     fun setSimulationCount(count: Int) {

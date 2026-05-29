@@ -2,13 +2,16 @@ package com.majiang.viewmodel
 
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.majiang.model.Tile
 import com.majiang.vision.RecognitionResult
 import com.majiang.vision.TileRecognizer
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class CameraUiState(
@@ -16,6 +19,7 @@ data class CameraUiState(
     val recognitionResults: List<RecognitionResult> = emptyList(),
     val recognizedTiles: List<Tile> = emptyList(),
     val isProcessing: Boolean = false,
+    val isModelLoaded: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -28,7 +32,16 @@ class CameraViewModel @Inject constructor(
     val uiState: StateFlow<CameraUiState> = _uiState.asStateFlow()
 
     init {
-        tileRecognizer.initializeClassifier()
+        loadModel()
+    }
+
+    private fun loadModel() {
+        viewModelScope.launch(Dispatchers.IO) {
+            tileRecognizer.initialize()
+            _uiState.value = _uiState.value.copy(
+                isModelLoaded = tileRecognizer.isInitialized
+            )
+        }
     }
 
     fun onCameraActive(isActive: Boolean) {
@@ -37,10 +50,12 @@ class CameraViewModel @Inject constructor(
 
     fun processFrame(bitmap: Bitmap) {
         if (_uiState.value.isProcessing) return
+        if (!tileRecognizer.isInitialized) return
 
         _uiState.value = _uiState.value.copy(isProcessing = true)
 
-        tileRecognizer.recognizeFromBitmap(bitmap) { results ->
+        viewModelScope.launch(Dispatchers.Default) {
+            val results = tileRecognizer.recognizeFromBitmap(bitmap)
             val tiles = results
                 .filter { it.isHighConfidence && it.tile != null }
                 .mapNotNull { it.tile }
@@ -62,6 +77,10 @@ class CameraViewModel @Inject constructor(
 
     fun setConfidenceThreshold(threshold: Float) {
         tileRecognizer.confidenceThreshold = threshold
+    }
+
+    fun setIouThreshold(threshold: Float) {
+        tileRecognizer.iouThreshold = threshold
     }
 
     override fun onCleared() {
