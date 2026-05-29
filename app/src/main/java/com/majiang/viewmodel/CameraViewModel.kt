@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.majiang.model.Tile
+import com.majiang.repository.SettingsRepository
 import com.majiang.vision.RecognitionMode
 import com.majiang.vision.RecognitionResult
 import com.majiang.vision.TileRecognizer
@@ -28,11 +29,28 @@ data class CameraUiState(
 
 @HiltViewModel
 class CameraViewModel @Inject constructor(
-    private val tileRecognizer: TileRecognizer
+    private val tileRecognizer: TileRecognizer,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CameraUiState())
     val uiState: StateFlow<CameraUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            val apiKey = settingsRepository.getCloudApiKeyOnce()
+            val provider = settingsRepository.getCloudProviderOnce()
+            val endpoint = settingsRepository.getCustomEndpointOnce()
+
+            if (apiKey.isNotBlank()) {
+                tileRecognizer.configureCloudVision(apiKey, provider, endpoint)
+                _uiState.value = _uiState.value.copy(
+                    isConfigured = true,
+                    recognitionMode = RecognitionMode.CLOUD_VISION
+                )
+            }
+        }
+    }
 
     fun onCameraActive(isActive: Boolean) {
         _uiState.value = _uiState.value.copy(isCameraActive = isActive)
@@ -68,12 +86,18 @@ class CameraViewModel @Inject constructor(
         }
     }
 
-    fun configureCloudVision(apiKey: String, provider: CloudVisionProvider) {
-        tileRecognizer.configureCloudVision(apiKey, provider)
+    fun configureCloudVision(apiKey: String, provider: CloudVisionProvider, endpoint: String = "") {
+        tileRecognizer.configureCloudVision(apiKey, provider, endpoint)
         _uiState.value = _uiState.value.copy(
             isConfigured = tileRecognizer.isConfigured,
             recognitionMode = RecognitionMode.CLOUD_VISION
         )
+
+        viewModelScope.launch {
+            settingsRepository.saveCloudApiKey(apiKey)
+            settingsRepository.saveCloudProvider(provider)
+            settingsRepository.saveCustomEndpoint(endpoint)
+        }
     }
 
     fun setRecognitionMode(mode: RecognitionMode) {

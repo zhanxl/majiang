@@ -3,25 +3,71 @@ package com.majiang.vision.strategy
 import android.graphics.Bitmap
 import android.util.Base64
 import com.majiang.model.Tile
-import com.majiang.model.TileCategory
 import com.majiang.vision.RecognitionResult
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
+import java.util.concurrent.TimeUnit
+
+data class ChatMessage(
+    val role: String,
+    val content: List<ContentPart>
+)
+
+data class ContentPart(
+    val type: String,
+    val text: String? = null,
+    @SerializedName("image_url")
+    val imageUrl: ImageUrl? = null
+)
+
+data class ImageUrl(
+    val url: String,
+    val detail: String = "high"
+)
+
+data class ChatRequest(
+    val model: String,
+    val messages: List<ChatMessage>,
+    @SerializedName("max_tokens")
+    val maxTokens: Int = 1000
+)
+
+data class ChatResponse(
+    val choices: List<Choice>?
+)
+
+data class Choice(
+    val message: ChoiceMessage?
+)
+
+data class ChoiceMessage(
+    val content: String?
+)
 
 class CloudVisionRecognitionStrategy(
     private val apiKey: String = "",
-    private val apiProvider: CloudVisionProvider = CloudVisionProvider.OPENAI,
+    private val apiProvider: CloudVisionProvider = CloudVisionProvider.QWEN,
     private val customEndpoint: String = ""
 ) : RecognitionStrategy {
 
     override val name: String = "云端视觉识别"
     override val isAvailable: Boolean = apiKey.isNotBlank()
     override val requiresNetwork: Boolean = true
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
+
+    private val gson = Gson()
 
     override suspend fun recognize(bitmap: Bitmap): List<RecognitionResult> {
         if (!isAvailable) return emptyList()
@@ -45,90 +91,50 @@ class CloudVisionRecognitionStrategy(
     }
 
     private fun callVisionApi(base64Image: String): String {
-        val (url, requestBody) = when (apiProvider) {
-            CloudVisionProvider.OPENAI -> buildOpenAIRequest(base64Image)
-            CloudVisionProvider.QWEN -> buildQwenRequest(base64Image)
-            CloudVisionProvider.CUSTOM -> buildCustomRequest(base64Image)
+        val (url, model) = when (apiProvider) {
+            CloudVisionProvider.OPENAI ->
+                "https://api.openai.com/v1/chat/completions" to "gpt-4o"
+            CloudVisionProvider.QWEN ->
+                "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions" to "qwen-vl-max"
+            CloudVisionProvider.CUSTOM ->
+                customEndpoint to "custom"
         }
 
-        val connection = URL(url).openConnection() as HttpURLConnection
-        connection.requestMethod = "POST"
-        connection.setRequestProperty("Content-Type", "application/json")
-        connection.setRequestProperty("Authorization", "Bearer $apiKey")
-        connection.doOutput = true
-        connection.connectTimeout = 30000
-        connection.readTimeout = 60000
+        val chatRequest = ChatRequest(
+            model = model,
+            messages = listOf(
+                ChatMessage(
+                    role = "user",
+                    content = listOf(
+                        ContentPart(type = "text", text = VISION_PROMPT),
+                        ContentPart(
+                            type = "image_url",
+                            imageUrl = ImageUrl(
+                                url = "data:image/jpeg;base64,$base64Image",
+                                detail = "high"
+                            )
+                        )
+                    )
+                )
+            )
+        )
 
-        connection.outputStream.use { os ->
-            os.write(requestBody.toByteArray(Charsets.UTF_8))
-        }
+        val jsonBody = gson.toJson(chatRequest)
+        val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
 
-        return if (connection.responseCode == 200) {
-            connection.inputStream.bufferedReader().readText()
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Authorization", "Bearer $apiKey")
+            .post(requestBody)
+            .build()
+
+        val response = client.newCall(request).execute()
+        return if (response.isSuccessful) {
+            response.body?.string() ?: ""
         } else {
             ""
         }
-    }
-
-    private fun buildOpenAIRequest(base64Image: String): Pair<String, String> {
-        val url = "https://api.openai.com/v1/chat/completions"
-        val body = JSONObject().apply {
-            put("model", "gpt-4o")
-            put("max_tokens", 1000)
-            put("messages", JSONArray().apply {
-                put(JSONObject().apply {
-                    put("role", "user")
-                    put("content", JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("type", "text")
-                            put("text", VISION_PROMPT)
-                        })
-                        put(JSONObject().apply {
-                            put("type", "image_url")
-                            put("image_url", JSONObject().apply {
-                                put("url", "data:image/jpeg;base64,$base64Image")
-                                put("detail", "high")
-                            })
-                        })
-                    })
-                })
-            })
-        }
-        return url to body.toString()
-    }
-
-    private fun buildQwenRequest(base64Image: String): Pair<String, String> {
-        val url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
-        val body = JSONObject().apply {
-            put("model", "qwen-vl-max")
-            put("messages", JSONArray().apply {
-                put(JSONObject().apply {
-                    put("role", "user")
-                    put("content", JSONArray().apply {
-                        put(JSONObject().apply {
-                            put("type", "text")
-                            put("text", VISION_PROMPT)
-                        })
-                        put(JSONObject().apply {
-                            put("type", "image_url")
-                            put("image_url", JSONObject().apply {
-                                put("url", "data:image/jpeg;base64,$base64Image")
-                            })
-                        })
-                    })
-                })
-            })
-        }
-        return url to body.toString()
-    }
-
-    private fun buildCustomRequest(base64Image: String): Pair<String, String> {
-        val url = customEndpoint
-        val body = JSONObject().apply {
-            put("image", base64Image)
-            put("prompt", VISION_PROMPT)
-        }
-        return url to body.toString()
     }
 
     private fun parseVisionResponse(response: String): List<RecognitionResult> {
@@ -137,17 +143,13 @@ class CloudVisionRecognitionStrategy(
         val results = mutableListOf<RecognitionResult>()
 
         try {
-            val json = JSONObject(response)
-            val content = json
-                .optJSONArray("choices")
-                ?.optJSONObject(0)
-                ?.optJSONObject("message")
-                ?.optString("content", "")
-                ?: ""
+            val chatResponse = gson.fromJson(response, ChatResponse::class.java)
+            val content = chatResponse.choices?.firstOrNull()
+                ?.message?.content ?: ""
 
             val tileNames = extractTileNames(content)
             for (name in tileNames) {
-                val tile = findTileByDisplayName(name)
+                val tile = Tile.entries.find { it.displayName == name }
                 if (tile != null) {
                     results.add(
                         RecognitionResult(
@@ -167,7 +169,6 @@ class CloudVisionRecognitionStrategy(
 
     private fun extractTileNames(content: String): List<String> {
         val names = mutableListOf<String>()
-
         val allDisplayNames = Tile.entries.map { it.displayName }.sortedByDescending { it.length }
 
         var remaining = content
@@ -177,6 +178,7 @@ class CloudVisionRecognitionStrategy(
                 if (remaining.startsWith(name)) {
                     names.add(name)
                     remaining = remaining.substring(name.length).trim()
+                        .removePrefix(",").removePrefix("，").removePrefix(" ").trim()
                     found = true
                     break
                 }
@@ -187,10 +189,6 @@ class CloudVisionRecognitionStrategy(
         }
 
         return names
-    }
-
-    private fun findTileByDisplayName(name: String): Tile? {
-        return Tile.entries.find { it.displayName == name }
     }
 
     companion object {

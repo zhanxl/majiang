@@ -1,9 +1,6 @@
 package com.majiang.ui.camera
 
 import android.Manifest
-import android.content.ContentValues
-import android.os.Build
-import android.provider.MediaStore
 import android.widget.Toast
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.Arrangement
@@ -107,8 +104,8 @@ fun CameraScreen(
 
         if (!uiState.isConfigured) {
             CloudVisionConfigContent(
-                onConfigured = { apiKey, provider ->
-                    viewModel.configureCloudVision(apiKey, provider)
+                onConfigured = { apiKey, provider, endpoint ->
+                    viewModel.configureCloudVision(apiKey, provider, endpoint)
                 },
                 modifier = Modifier.padding(padding)
             )
@@ -242,7 +239,7 @@ fun CameraScreen(
 
 @Composable
 private fun CloudVisionConfigContent(
-    onConfigured: (String, com.majiang.vision.strategy.CloudVisionProvider) -> Unit,
+    onConfigured: (String, com.majiang.vision.strategy.CloudVisionProvider, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -250,6 +247,7 @@ private fun CloudVisionConfigContent(
     var selectedProvider by remember {
         androidx.compose.runtime.mutableStateOf(com.majiang.vision.strategy.CloudVisionProvider.QWEN)
     }
+    var customEndpoint by remember { androidx.compose.runtime.mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -307,12 +305,23 @@ private fun CloudVisionConfigContent(
             singleLine = true
         )
 
+        if (selectedProvider == com.majiang.vision.strategy.CloudVisionProvider.CUSTOM) {
+            Spacer(modifier = Modifier.height(8.dp))
+            androidx.compose.material3.OutlinedTextField(
+                value = customEndpoint,
+                onValueChange = { customEndpoint = it },
+                label = { Text("自定义接口地址") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
                 if (apiKey.isNotBlank()) {
-                    onConfigured(apiKey, selectedProvider)
+                    onConfigured(apiKey, selectedProvider, customEndpoint)
                 } else {
                     Toast.makeText(context, "请输入 API Key", Toast.LENGTH_SHORT).show()
                 }
