@@ -86,7 +86,7 @@ class YOLOv8Detector(
                     boundingBox = detection.boundingBox
                 )
             } else {
-                Timber.w("Unknown tile class: ${detection.className}")
+                Timber.d("Detected non-playable tile: ${detection.className}")
                 null
             }
         }
@@ -162,11 +162,19 @@ class YOLOv8Detector(
         }
     }
 
-    private fun buildTileMap(): Map<String, Tile> {
-        val map = mutableMapOf<String, Tile>()
+    private fun buildTileMap(): Map<String, Tile?> {
+        val map = mutableMapOf<String, Tile?>()
         for (tile in Tile.entries) {
             map[tile.name] = tile
         }
+        map["HUA_CHUN"] = null
+        map["HUA_XIA"] = null
+        map["HUA_QIU"] = null
+        map["HUA_DONG"] = null
+        map["JI_MEI"] = null
+        map["JI_LAN"] = null
+        map["JI_ZHU"] = null
+        map["JI_JU"] = null
         return map
     }
 
