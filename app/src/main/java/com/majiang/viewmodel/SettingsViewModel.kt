@@ -1,6 +1,7 @@
 package com.majiang.viewmodel
 
 import androidx.lifecycle.ViewModel
+import com.majiang.vision.strategy.CloudVisionProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +12,10 @@ data class SettingsUiState(
     val selectedRule: String = "广东麻将",
     val confidenceThreshold: Float = 0.7f,
     val simulationCount: Int = 1000,
-    val isDarkTheme: Boolean = false
+    val isDarkTheme: Boolean = false,
+    val cloudProvider: CloudVisionProvider = CloudVisionProvider.QWEN,
+    val cloudApiKey: String = "",
+    val customEndpoint: String = ""
 )
 
 @HiltViewModel
@@ -34,5 +38,17 @@ class SettingsViewModel @Inject constructor() : ViewModel() {
 
     fun setDarkTheme(enabled: Boolean) {
         _uiState.value = _uiState.value.copy(isDarkTheme = enabled)
+    }
+
+    fun setCloudProvider(provider: CloudVisionProvider) {
+        _uiState.value = _uiState.value.copy(cloudProvider = provider)
+    }
+
+    fun setCloudApiKey(key: String) {
+        _uiState.value = _uiState.value.copy(cloudApiKey = key)
+    }
+
+    fun setCustomEndpoint(endpoint: String) {
+        _uiState.value = _uiState.value.copy(customEndpoint = endpoint)
     }
 }

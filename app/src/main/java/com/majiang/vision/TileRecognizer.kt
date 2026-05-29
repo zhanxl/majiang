@@ -2,10 +2,8 @@ package com.majiang.vision
 
 import android.content.Context
 import android.graphics.Bitmap
-import com.majiang.model.Tile
 import com.majiang.vision.strategy.CloudVisionProvider
 import com.majiang.vision.strategy.CloudVisionRecognitionStrategy
-import com.majiang.vision.strategy.ManualRecognitionStrategy
 import com.majiang.vision.strategy.RecognitionStrategy
 import com.majiang.vision.strategy.TFLiteRecognitionStrategy
 import timber.log.Timber
@@ -13,7 +11,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 enum class RecognitionMode {
-    MANUAL,
     CLOUD_VISION,
     TFLITE
 }
@@ -24,12 +21,9 @@ class TileRecognizer @Inject constructor(
 ) {
     private val strategies = mutableMapOf<RecognitionMode, RecognitionStrategy>()
 
-    private var currentMode: RecognitionMode = RecognitionMode.MANUAL
+    private var currentMode: RecognitionMode = RecognitionMode.CLOUD_VISION
 
     var confidenceThreshold: Float = RecognitionResult.CONFIDENCE_THRESHOLD
-
-    val manualStrategy: ManualRecognitionStrategy
-        get() = getStrategy(RecognitionMode.MANUAL) as ManualRecognitionStrategy
 
     val currentStrategy: RecognitionStrategy
         get() = getStrategy(currentMode)
@@ -37,9 +31,8 @@ class TileRecognizer @Inject constructor(
     val currentModeName: String
         get() = currentStrategy.name
 
-    init {
-        strategies[RecognitionMode.MANUAL] = ManualRecognitionStrategy()
-    }
+    val isConfigured: Boolean
+        get() = currentStrategy.isAvailable
 
     fun setMode(mode: RecognitionMode) {
         currentMode = mode
@@ -79,19 +72,12 @@ class TileRecognizer @Inject constructor(
             return emptyList()
         }
 
-        val results = strategy.recognize(bitmap)
-        return results.filter { it.confidence >= confidenceThreshold }
-    }
-
-    fun recognizeManual(): List<RecognitionResult> {
-        val manual = manualStrategy
-        return manual.selectedTiles.map { tile ->
-            RecognitionResult(
-                tile = tile,
-                confidence = 1.0f,
-                boundingBox = null,
-                label = tile.displayName
-            )
+        return try {
+            val results = strategy.recognize(bitmap)
+            results.filter { it.confidence >= confidenceThreshold }
+        } catch (e: Exception) {
+            Timber.e(e, "Recognition failed")
+            emptyList()
         }
     }
 
@@ -107,6 +93,5 @@ class TileRecognizer @Inject constructor(
     fun release() {
         strategies.values.forEach { it.release() }
         strategies.clear()
-        strategies[RecognitionMode.MANUAL] = ManualRecognitionStrategy()
     }
 }

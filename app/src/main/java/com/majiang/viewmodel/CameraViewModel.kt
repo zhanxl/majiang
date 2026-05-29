@@ -17,15 +17,13 @@ import javax.inject.Inject
 
 data class CameraUiState(
     val isCameraActive: Boolean = false,
-    val recognitionMode: RecognitionMode = RecognitionMode.MANUAL,
     val recognitionResults: List<RecognitionResult> = emptyList(),
     val recognizedTiles: List<Tile> = emptyList(),
-    val manuallySelectedTiles: List<Tile> = emptyList(),
     val isProcessing: Boolean = false,
     val errorMessage: String? = null,
-    val availableModes: List<RecognitionMode> = listOf(RecognitionMode.MANUAL),
-    val cloudApiKey: String = "",
-    val cloudProvider: CloudVisionProvider = CloudVisionProvider.QWEN
+    val recognitionMode: RecognitionMode = RecognitionMode.CLOUD_VISION,
+    val isConfigured: Boolean = false,
+    val lastCapturedBitmap: Bitmap? = null
 )
 
 @HiltViewModel
@@ -36,34 +34,24 @@ class CameraViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CameraUiState())
     val uiState: StateFlow<CameraUiState> = _uiState.asStateFlow()
 
-    init {
-        updateAvailableModes()
-    }
-
     fun onCameraActive(isActive: Boolean) {
         _uiState.value = _uiState.value.copy(isCameraActive = isActive)
     }
 
-    fun setRecognitionMode(mode: RecognitionMode) {
-        tileRecognizer.setMode(mode)
-        _uiState.value = _uiState.value.copy(
-            recognitionMode = mode,
-            recognitionResults = emptyList(),
-            recognizedTiles = emptyList()
-        )
-    }
-
-    fun processFrame(bitmap: Bitmap) {
+    fun recognizeFromBitmap(bitmap: Bitmap) {
         if (_uiState.value.isProcessing) return
-        if (_uiState.value.recognitionMode == RecognitionMode.MANUAL) return
 
-        _uiState.value = _uiState.value.copy(isProcessing = true)
+        _uiState.value = _uiState.value.copy(
+            isProcessing = true,
+            lastCapturedBitmap = bitmap,
+            errorMessage = null
+        )
 
         viewModelScope.launch {
             try {
                 val results = tileRecognizer.recognize(bitmap)
                 val tiles = results
-                    .filter { it.isHighConfidence && it.tile != null }
+                    .filter { it.tile != null }
                     .mapNotNull { it.tile }
 
                 _uiState.value = _uiState.value.copy(
@@ -80,62 +68,19 @@ class CameraViewModel @Inject constructor(
         }
     }
 
-    fun addManualTile(tile: Tile) {
-        tileRecognizer.manualStrategy.addTile(tile)
-        val tiles = tileRecognizer.manualStrategy.selectedTiles
-        _uiState.value = _uiState.value.copy(
-            manuallySelectedTiles = tiles,
-            recognizedTiles = tiles
-        )
-    }
-
-    fun removeManualTile(index: Int) {
-        val current = tileRecognizer.manualStrategy.selectedTiles
-        if (index in current.indices) {
-            tileRecognizer.manualStrategy.removeTile(current[index])
-        }
-        val tiles = tileRecognizer.manualStrategy.selectedTiles
-        _uiState.value = _uiState.value.copy(
-            manuallySelectedTiles = tiles,
-            recognizedTiles = tiles
-        )
-    }
-
-    fun removeLastManualTile() {
-        tileRecognizer.manualStrategy.removeLastTile()
-        val tiles = tileRecognizer.manualStrategy.selectedTiles
-        _uiState.value = _uiState.value.copy(
-            manuallySelectedTiles = tiles,
-            recognizedTiles = tiles
-        )
-    }
-
-    fun clearManualTiles() {
-        tileRecognizer.manualStrategy.clearTiles()
-        _uiState.value = _uiState.value.copy(
-            manuallySelectedTiles = emptyList(),
-            recognizedTiles = emptyList()
-        )
-    }
-
     fun configureCloudVision(apiKey: String, provider: CloudVisionProvider) {
         tileRecognizer.configureCloudVision(apiKey, provider)
         _uiState.value = _uiState.value.copy(
-            cloudApiKey = apiKey,
-            cloudProvider = provider
+            isConfigured = tileRecognizer.isConfigured,
+            recognitionMode = RecognitionMode.CLOUD_VISION
         )
-        updateAvailableModes()
     }
 
-    fun configureTFLite() {
-        tileRecognizer.configureTFLite()
-        updateAvailableModes()
-    }
-
-    fun clearResults() {
+    fun setRecognitionMode(mode: RecognitionMode) {
+        tileRecognizer.setMode(mode)
         _uiState.value = _uiState.value.copy(
-            recognitionResults = emptyList(),
-            recognizedTiles = emptyList()
+            recognitionMode = mode,
+            isConfigured = tileRecognizer.isConfigured
         )
     }
 
@@ -143,9 +88,17 @@ class CameraViewModel @Inject constructor(
         tileRecognizer.confidenceThreshold = threshold
     }
 
-    private fun updateAvailableModes() {
-        val modes = tileRecognizer.getAvailableModes()
-        _uiState.value = _uiState.value.copy(availableModes = modes)
+    fun clearResults() {
+        _uiState.value = _uiState.value.copy(
+            recognitionResults = emptyList(),
+            recognizedTiles = emptyList(),
+            lastCapturedBitmap = null,
+            errorMessage = null
+        )
+    }
+
+    fun dismissError() {
+        _uiState.value = _uiState.value.copy(errorMessage = null)
     }
 
     override fun onCleared() {
